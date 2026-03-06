@@ -16,9 +16,9 @@ const app = {};
 
 // testing file system
 // TODO remove it later
-lib.delete('test', 'newFile', (err, result) => {
-    console.log(err, result)
-})
+// lib.delete('test', 'newFile', (err, result) => {
+//     console.log(err, result)
+// })
 
 // create server 
 app.createServer = () => {
