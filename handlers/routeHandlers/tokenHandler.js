@@ -26,7 +26,7 @@ handler.tokenHandler = (requestProperties, callback) => {
 
 handler._token = {};
 
-// @TODO authentication
+
 handler._token.post = (requestProperties, callback) => {
     const phone = typeof (requestProperties.body.phone) === 'string'
         && requestProperties.body.phone.trim().length === 11
@@ -41,7 +41,6 @@ handler._token.post = (requestProperties, callback) => {
         data.read('users', phone, (err1, userData) => {
             const user = { ...parseJSON(userData) };
             const hashedPassword = hash(password);
-            console.log(hashedPassword, user.password)
             if (hashedPassword === user.password) {
                 const tokenId = createRandomString(20);
                 const expires = Date.now() + 60 * 60 * 1000;
@@ -99,7 +98,6 @@ handler._token.get = (requestProperties, callback) => {
     }
 };
 
-// @TODO authentication
 handler._token.put = (requestProperties, callback) => {
     // check if the phone number is valid
     const id = typeof (requestProperties.body.id) === 'string'
@@ -143,7 +141,6 @@ handler._token.put = (requestProperties, callback) => {
 
 };
 
-// @TODO authentication
 handler._token.delete = (requestProperties, callback) => {
     // check if the token is valid
     const id = typeof (requestProperties.queryStringObject.id) === 'string'
@@ -177,6 +174,22 @@ handler._token.delete = (requestProperties, callback) => {
         })
     }
 };
+
+handler.verifyTokenId = (id, phone, callback) => {
+    data.read('tokens', id, (err, tokenData) => {
+        if (!err && tokenData) {
+            if (parseJSON(tokenData).phone === phone
+                && parseJSON(tokenData).expires > Date.now()
+            ) {
+                callback(true)
+            } else {
+                callback(false)
+            }
+        } else {
+            callback(false)
+        }
+    })
+}
 
 
 module.exports = handler;
