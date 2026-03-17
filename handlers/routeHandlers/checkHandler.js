@@ -178,14 +178,189 @@ handler._check.get = (requestProperties, callback) => {
     }
 };
 
-// @TODO authentication
-handler._check.put = (requestProperties, callback) => {
 
+handler._check.put = (requestProperties, callback) => {
+    // check if the id is valid
+    const id = typeof (requestProperties.body.id) === 'string'
+        && requestProperties.body.id.trim().length === 20
+        ? requestProperties.body.id
+        : false;
+
+    // validate data
+    const protocol = typeof (requestProperties.body.protocol) === 'string'
+        && ['http', 'https'].indexOf(requestProperties.body.protocol) > -1
+        ? requestProperties.body.protocol
+        : false;
+
+    const url = typeof (requestProperties.body.url) === 'string'
+        && requestProperties.body.url.trim().length > 0
+        ? requestProperties.body.url
+        : false;
+
+    const method = typeof (requestProperties.body.method) === 'string'
+        && ['GET', 'POST', 'PUT', 'DELETE'].indexOf(requestProperties.body.method) > -1
+        ? requestProperties.body.method
+        : false;
+
+    const successCodes = typeof (requestProperties.body.successCodes) === 'object'
+        && requestProperties.body.successCodes instanceof Array
+        ? requestProperties.body.successCodes
+        : false;
+
+    const timeOutSeconds = typeof (requestProperties.body.timeOutSeconds) === 'number'
+        && requestProperties.body.timeOutSeconds % 1 === 0
+        && requestProperties.body.timeOutSeconds >= 1
+        && requestProperties.body.timeOutSeconds <= 5
+        ? requestProperties.body.timeOutSeconds
+        : false;
+    if (id) {
+        if (protocol || url || method || successCodes || timeOutSeconds) {
+            // lookup the data
+            data.read('checks', id, (err1, checkData) => {
+                if (!err1 && checkData) {
+                    let checkObject = parseJSON(checkData);
+                    let token = typeof (requestProperties.headerObject.token) === 'string'
+                        ? requestProperties.headerObject.token
+                        : false;
+
+                    // verify token
+                    verifyTokenId(token, checkObject.userPhone, (tokenIsValid) => {
+                        if (tokenIsValid) {
+                            if (protocol) {
+                                checkObject.protocol = protocol;
+                            }
+                            if (url) {
+                                checkObject.url = url;
+                            }
+                            if (method) {
+                                checkObject.method = method;
+                            }
+                            if (successCodes) {
+                                checkObject.successCodes = successCodes;
+                            }
+                            if (timeOutSeconds) {
+                                checkObject.timeOutSeconds = timeOutSeconds;
+                            }
+
+                            // update the data
+                            data.update('checks', id, checkObject, (err2) => {
+                                if (!err2) {
+                                    callback(200, {
+                                        message: 'The data has been updated successfully!'
+                                    })
+                                } else {
+                                    callback(500, {
+                                        error: 'Updating the data failed!'
+                                    })
+                                }
+                            })
+                        } else {
+                            callback(403, {
+                                error: 'Authentication problem!'
+                            })
+                        }
+                    })
+                } else {
+                    callback(500, {
+                        error: 'Could not find the check data!'
+                    })
+                }
+            })
+        } else {
+            callback(400, {
+                error: 'You have to provide at least one field to update!'
+            })
+        }
+    } else {
+        callback(400, {
+            error: 'Your id is invalid!'
+        })
+    }
 };
 
-// @TODO authentication
-handler._check.delete = (requestProperties, callback) => {
 
+handler._check.delete = (requestProperties, callback) => {
+    // check if the id is valid
+    const id = typeof (requestProperties.body.id) === 'string'
+        && requestProperties.body.id.trim().length === 20
+        ? requestProperties.body.id
+        : false;
+
+    if (id) {
+        // lookup the check data
+        data.read('checks', id, (err1, checkData) => {
+            if (!err1 && checkData) {
+                let token = typeof (requestProperties.headerObject.token) === 'string'
+                    ? requestProperties.headerObject.token
+                    : false;
+
+                // verify token
+                verifyTokenId(token, parseJSON(checkData).userPhone, (tokenIsValid) => {
+                    if (tokenIsValid) {
+                        // delete the check data
+                        data.delete('checks', id, (err2) => {
+                            if (!err2) {
+                                // lookup the data on the user
+                                data.read('users', parseJSON(checkData).userPhone, (err3, userData) => {
+                                    if (!err3 && userData) {
+                                        let userObject = parseJSON(userData);
+                                        let userChecks = typeof (userObject.checks) === 'object'
+                                            && userObject.checks instanceof Array
+                                            ? userObject.checks
+                                            : [];
+
+                                        // remove the deleted check id from user's list of chceks
+                                        let checkPosition = userChecks.indexOf(id);
+                                        if (checkPosition > -1) {
+                                            userChecks.splice(checkPosition, 1);
+
+                                            // resave the user data
+                                            userObject.checks = userChecks;
+                                            data.update('users', userObject.phone, userObject, (err4) => {
+                                                if (!err4) {
+                                                    callback(200, {
+                                                        message: 'Deleted the check successfully!'
+                                                    })
+                                                } else {
+                                                    callback(500, {
+                                                        error: 'There was a server side error!'
+                                                    })
+                                                }
+                                            })
+                                        } else {
+                                            callback(500, {
+                                                error: 'The check id that you are trying to remove was not found in the user!'
+                                            })
+                                        }
+                                    } else {
+                                        callback(500, {
+                                            error: 'There was a server side error!'
+                                        })
+                                    }
+                                })
+                            } else {
+                                callback(500, {
+                                    error: 'There was a server side error!'
+                                })
+                            }
+                        })
+                    } else {
+                        callback(403, {
+                            error: 'Authentication error!'
+                        })
+                    }
+                })
+            } else {
+                callback(500, {
+                    error: 'Could not find the check data of the specific ID!'
+                })
+            }
+        })
+    } else {
+        callback(404, {
+            error: 'Your ID is invalid!'
+        })
+    }
 };
 
 
