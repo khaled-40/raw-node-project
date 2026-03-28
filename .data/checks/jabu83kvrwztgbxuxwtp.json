@@ -1,1 +1,1 @@
-{"id":"jabu83kvrwztgbxuxwtp","userPhone":"01911111111","protocol":"http","url":"google.com","method":"GET","successCodes":[200,201],"timeOutSeconds":2}
+{"id":"jabu83kvrwztgbxuxwtp","userPhone":"01911111111","protocol":"http","url":"google.com","method":"GET","successCodes":[200,201],"timeOutSeconds":2,"state":"down","lastChecked":1774719634202}
